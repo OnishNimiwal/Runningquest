@@ -64,6 +64,32 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
+from flask import jsonify
+
+@app.route('/run')
+@login_required
+def run_tracker():
+    return render_template('run.html', title='Live Run Tracking')
+
+@app.route('/api/save_run', methods=['POST'])
+@login_required
+def save_run():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    from models import Run
+    new_run = Run(
+        user_id=current_user.id,
+        distance=data.get('distance', 0.0),
+        duration=data.get('duration', 0),
+        route_data=data.get('route_data', '{}')
+    )
+    db.session.add(new_run)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'run_id': new_run.id}), 201
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

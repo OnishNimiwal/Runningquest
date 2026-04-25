@@ -18,3 +18,18 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+from datetime import datetime
+
+class Run(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    distance = db.Column(db.Float, default=0.0)
+    duration = db.Column(db.Integer, default=0) # in seconds
+    route_data = db.Column(db.Text, nullable=True) # GeoJSON string
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('runs', lazy=True))
+
+    def __repr__(self):
+        return f'<Run {self.id} User {self.user_id}>'
