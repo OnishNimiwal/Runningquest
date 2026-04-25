@@ -70,7 +70,12 @@
             </div>
             <div class="leaderboard-list">
                 {% for entry in leaderboard %}
-                <div class="leaderboard-item {% if loop.index == 1 %}top-rank{% endif %}">
+                {% set rank_class = "" %}
+                {% if loop.index == 1 %}{% set rank_class = "top-1" %}
+                {% elif loop.index == 2 %}{% set rank_class = "top-2" %}
+                {% elif loop.index == 3 %}{% set rank_class = "top-3" %}
+                {% endif %}
+                <div class="leaderboard-item {{ rank_class }}">
                     <span class="rank">#{{ loop.index }}</span>
                     <span class="name" style="color: {{ entry.color }}">{{ entry.username }}</span>
                     <span class="score">{{ entry.captures }} Captures</span>
