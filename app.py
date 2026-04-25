@@ -26,7 +26,10 @@ db.init_app(app)
 
 # Ensure tables are created when Vercel boots up the app
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+    except Exception as e:
+        print(f"Warning: Database initialization failed. Check your DATABASE_URL: {e}")
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
