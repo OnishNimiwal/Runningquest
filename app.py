@@ -29,7 +29,33 @@ def index():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html', title='Dashboard')
+    from models import TerritoryEventLog, User, Territory
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+
+    # Get user's territories count
+    user_territories = Territory.query.filter_by(user_id=current_user.id).count()
+
+    # Calculate leaderboard for last 24h
+    last_24h = datetime.utcnow() - timedelta(days=1)
+    
+    leaderboard_query = db.session.query(
+        User.username,
+        User.color,
+        func.count(TerritoryEventLog.id).label('captures')
+    ).join(
+        TerritoryEventLog, User.id == TerritoryEventLog.captured_by_user_id
+    ).filter(
+        TerritoryEventLog.timestamp >= last_24h
+    ).group_by(
+        User.id
+    ).order_by(
+        func.count(TerritoryEventLog.id).desc()
+    ).limit(10).all()
+
+    return render_template('dashboard.html', title='Dashboard', 
+                           user_territories=user_territories, 
+                           leaderboard=leaderboard_query)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -97,6 +123,46 @@ def save_run():
     print(f"DEBUG: Run calculated {len(cells)} unique grid cells: {cells}")
     
     return jsonify({'success': True, 'run_id': new_run.id, 'cells_calculated': cells}), 201
+
+@app.route('/api/capture_cell', methods=['POST'])
+@login_required
+def capture_cell():
+    data = request.get_json()
+    cell_id = data.get('cell_id')
+    if not cell_id:
+        return jsonify({'error': 'No cell_id provided'}), 400
+
+    from models import Territory, TerritoryEventLog
+    from datetime import datetime
+    
+    # Check if territory exists
+    territory = Territory.query.filter_by(cell_id=cell_id).first()
+    prev_owner_id = None
+    
+    if territory:
+        if territory.user_id == current_user.id:
+            return jsonify({'status': 'already_owned'}), 200
+        prev_owner_id = territory.user_id
+        territory.user_id = current_user.id
+        territory.date_captured = datetime.utcnow()
+    else:
+        territory = Territory(cell_id=cell_id, user_id=current_user.id)
+        db.session.add(territory)
+
+    # Log the event
+    event = TerritoryEventLog(
+        cell_id=cell_id,
+        captured_by_user_id=current_user.id,
+        previous_owner_id=prev_owner_id
+    )
+    db.session.add(event)
+
+    # Update user score
+    current_user.score += 1
+
+    db.session.commit()
+
+    return jsonify({'status': 'captured', 'color': current_user.color}), 200
 
 if __name__ == '__main__':
     with app.app_context():

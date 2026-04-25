@@ -6,10 +6,13 @@ let durationSeconds = 0;
 let timerInterval = null;
 let totalDistanceKm = 0;
 let routeCoordinates = []; // Array of [lng, lat] for GeoJSON
+let capturedCells = new Set();
+let capturesCount = 0;
 
 // UI Elements
 const distanceDisplay = document.getElementById('distanceDisplay');
 const timeDisplay = document.getElementById('timeDisplay');
+const capturesDisplay = document.getElementById('capturesDisplay');
 const startBtn = document.getElementById('startBtn');
 const pauseBtn = document.getElementById('pauseBtn');
 const stopBtn = document.getElementById('stopBtn');
@@ -86,6 +89,14 @@ function startRun() {
 
         // GeoJSON uses [lng, lat]
         routeCoordinates.push([lng, lat]);
+
+        if (typeof Geohash !== 'undefined') {
+            const currentHash = Geohash.encode(lat, lng, 7);
+            if (!capturedCells.has(currentHash)) {
+                capturedCells.add(currentHash);
+                captureTerritory(currentHash, lat, lng);
+            }
+        }
 
     }, (error) => {
         console.warn('ERROR(' + error.code + '): ' + error.message);
@@ -173,4 +184,23 @@ if (navigator.geolocation) {
             marker.setLatLng([position.coords.latitude, position.coords.longitude]);
         }
     });
+}
+
+async function captureTerritory(cell_id, lat, lng) {
+    try {
+        const response = await fetch('/api/capture_cell', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({cell_id: cell_id})
+        });
+        const data = await response.json();
+        
+        if (data.status === 'captured') {
+            capturesCount++;
+            capturesDisplay.textContent = capturesCount;
+            L.circle([lat, lng], {radius: 75, color: data.color, fillOpacity: 0.3}).addTo(map);
+        }
+    } catch (e) {
+        console.error('Capture failed:', e);
+    }
 }

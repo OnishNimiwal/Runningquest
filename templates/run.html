@@ -44,6 +44,10 @@
                     <h2 id="timeDisplay">00:00</h2>
                     <p>Time</p>
                 </div>
+                <div class="live-stat">
+                    <h2 id="capturesDisplay">0</h2>
+                    <p>Captures</p>
+                </div>
             </div>
             
             <div class="controls">
@@ -56,6 +60,8 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Geohash JS -->
+    <script src="https://cdn.jsdelivr.net/npm/latlon-geohash@2.0.0/latlon-geohash.min.js"></script>
     <script src="{{ url_for('static', filename='js/run_tracker.js') }}"></script>
 </body>
 </html>

@@ -57,21 +57,15 @@
                 <button class="tab">Country</button>
             </div>
             <div class="leaderboard-list">
-                <div class="leaderboard-item top-rank">
-                    <span class="rank">#1</span>
-                    <span class="name">Speedster99</span>
-                    <span class="score">15 Territories</span>
+                {% for entry in leaderboard %}
+                <div class="leaderboard-item {% if loop.index == 1 %}top-rank{% endif %}">
+                    <span class="rank">#{{ loop.index }}</span>
+                    <span class="name" style="color: {{ entry.color }}">{{ entry.username }}</span>
+                    <span class="score">{{ entry.captures }} Captures</span>
                 </div>
-                <div class="leaderboard-item">
-                    <span class="rank">#2</span>
-                    <span class="name">MarathonMike</span>
-                    <span class="score">12 Territories</span>
-                </div>
-                <div class="leaderboard-item">
-                    <span class="rank">#3</span>
-                    <span class="name">{{ current_user.username }}</span>
-                    <span class="score">4 Territories</span>
-                </div>
+                {% else %}
+                <p style="text-align:center; color:#94a3b8; padding: 2rem;">No captures in the last 24 hours yet.</p>
+                {% endfor %}
             </div>
         </section>
     </div>

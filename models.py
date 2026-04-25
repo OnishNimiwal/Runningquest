@@ -10,6 +10,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), index=True, unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     color = db.Column(db.String(7), default='#3b82f6')
+    score = db.Column(db.Integer, default=0)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -45,3 +46,13 @@ class Territory(db.Model):
 
     def __repr__(self):
         return f'<Territory {self.cell_id} Owner {self.user_id}>'
+
+class TerritoryEventLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    cell_id = db.Column(db.String(12), nullable=False)
+    captured_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    previous_owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    captor = db.relationship('User', foreign_keys=[captured_by_user_id])
+    previous_owner = db.relationship('User', foreign_keys=[previous_owner_id])
