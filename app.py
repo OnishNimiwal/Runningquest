@@ -106,6 +106,11 @@ from flask import jsonify
 @app.route('/run')
 @login_required
 def run_tracker():
+    current_user.is_suspicious_run = False
+    current_user.last_lat = None
+    current_user.last_lng = None
+    current_user.last_loc_time = None
+    db.session.commit()
     return render_template('run.html', title='Live Run Tracking')
 
 @app.route('/api/save_run', methods=['POST'])
@@ -138,8 +143,22 @@ def save_run():
 def capture_cell():
     data = request.get_json()
     cell_id = data.get('cell_id')
-    if not cell_id:
-        return jsonify({'error': 'No cell_id provided'}), 400
+    lat = data.get('lat')
+    lng = data.get('lng')
+
+    if not cell_id or lat is None or lng is None:
+        return jsonify({'error': 'Missing cell data or coordinates'}), 400
+
+    if current_user.is_suspicious_run:
+        return jsonify({'status': 'suspicious', 'message': 'Anti-cheat triggered: Run permanently marked suspicious.'}), 200
+
+    from utils.anticheat import validate_movement
+    is_valid = validate_movement(current_user, float(lat), float(lng))
+    
+    if not is_valid:
+        current_user.is_suspicious_run = True
+        db.session.commit()
+        return jsonify({'status': 'suspicious', 'message': 'Anti-cheat triggered: Impossible speed detected.'}), 200
 
     from models import Territory, TerritoryEventLog
     from datetime import datetime

@@ -218,10 +218,15 @@ async function captureTerritory(cell_id, lat, lng) {
         const response = await fetch('/api/capture_cell', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({cell_id: cell_id})
+            body: JSON.stringify({cell_id: cell_id, lat: lat, lng: lng})
         });
         const data = await response.json();
         
+        if (data.status === 'suspicious') {
+            alert("ANTI-CHEAT TRIGGERED: Impossible speed detected! Territory captures disabled for this run.");
+            return;
+        }
+
         if (data.status === 'captured') {
             capturesCount++;
             capturesDisplay.textContent = capturesCount;

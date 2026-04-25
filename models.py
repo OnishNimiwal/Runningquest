@@ -13,6 +13,10 @@ class User(UserMixin, db.Model):
     color = db.Column(db.String(7), default='#3b82f6')
     score = db.Column(db.Integer, default=0)
     last_active = db.Column(db.DateTime, default=datetime.utcnow)
+    last_lat = db.Column(db.Float, nullable=True)
+    last_lng = db.Column(db.Float, nullable=True)
+    last_loc_time = db.Column(db.DateTime, nullable=True)
+    is_suspicious_run = db.Column(db.Boolean, default=False)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
