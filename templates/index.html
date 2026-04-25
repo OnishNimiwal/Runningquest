@@ -9,6 +9,15 @@
 <body>
     <div class="container">
         <header>
+            <nav style="text-align: right; margin-bottom: 20px;">
+                {% if current_user.is_authenticated %}
+                    <span>Hi, {{ current_user.username }}!</span>
+                    <a href="{{ url_for('logout') }}" style="margin-left: 10px;">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}">Login</a>
+                    <a href="{{ url_for('register') }}" style="margin-left: 10px;">Register</a>
+                {% endif %}
+            </nav>
             <h1>Welcome to Running Quest</h1>
             <p>Your journey to better running starts here.</p>
         </header>
