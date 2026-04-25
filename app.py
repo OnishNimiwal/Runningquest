@@ -164,6 +164,21 @@ def capture_cell():
 
     return jsonify({'status': 'captured', 'color': current_user.color}), 200
 
+@app.route('/api/territories', methods=['GET'])
+@login_required
+def get_territories():
+    from models import Territory, User
+    territories = db.session.query(Territory, User).join(User, Territory.user_id == User.id).all()
+    
+    result = []
+    for t, u in territories:
+        result.append({
+            'cell_id': t.cell_id,
+            'color': u.color,
+            'owner': u.username
+        })
+    return jsonify(result), 200
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

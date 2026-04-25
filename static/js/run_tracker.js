@@ -186,6 +186,33 @@ if (navigator.geolocation) {
     });
 }
 
+let drawnRectangles = {}; // Maps cell_id to L.rectangle object
+
+async function loadGlobalTerritories() {
+    try {
+        const response = await fetch('/api/territories');
+        const territories = await response.json();
+        
+        if (typeof Geohash !== 'undefined') {
+            territories.forEach(t => {
+                const bounds = Geohash.bounds(t.cell_id);
+                const rectBounds = [[bounds.sw.lat, bounds.sw.lon], [bounds.ne.lat, bounds.ne.lon]];
+                
+                const rect = L.rectangle(rectBounds, {
+                    color: t.color,
+                    weight: 2,
+                    fillOpacity: 0.4
+                }).addTo(map);
+                
+                rect.bindTooltip(t.owner);
+                drawnRectangles[t.cell_id] = rect;
+            });
+        }
+    } catch (e) {
+        console.error("Failed to load global territories", e);
+    }
+}
+
 async function captureTerritory(cell_id, lat, lng) {
     try {
         const response = await fetch('/api/capture_cell', {
@@ -198,9 +225,30 @@ async function captureTerritory(cell_id, lat, lng) {
         if (data.status === 'captured') {
             capturesCount++;
             capturesDisplay.textContent = capturesCount;
-            L.circle([lat, lng], {radius: 75, color: data.color, fillOpacity: 0.3}).addTo(map);
+            
+            if (typeof Geohash !== 'undefined') {
+                if (drawnRectangles[cell_id]) {
+                    // Update existing (takeover)
+                    drawnRectangles[cell_id].setStyle({color: data.color});
+                    drawnRectangles[cell_id].bindTooltip("Captured by you!");
+                } else {
+                    // Create new
+                    const bounds = Geohash.bounds(cell_id);
+                    const rectBounds = [[bounds.sw.lat, bounds.sw.lon], [bounds.ne.lat, bounds.ne.lon]];
+                    const rect = L.rectangle(rectBounds, {
+                        color: data.color,
+                        weight: 2,
+                        fillOpacity: 0.4
+                    }).addTo(map);
+                    rect.bindTooltip("Captured by you!");
+                    drawnRectangles[cell_id] = rect;
+                }
+            }
         }
     } catch (e) {
         console.error('Capture failed:', e);
     }
 }
+
+// Load global territories when page loads
+loadGlobalTerritories();
