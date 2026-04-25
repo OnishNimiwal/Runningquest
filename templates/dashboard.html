@@ -21,7 +21,7 @@
     <div class="stats-grid">
         <div class="stat-card">
             <h3>Total Distance</h3>
-            <div class="stat-value">42.5 <span>km</span></div>
+            <div class="stat-value">{{ "%.1f"|format(total_distance) }} <span>km</span></div>
         </div>
         <div class="stat-card">
             <h3>Territories Owned</h3>
@@ -29,7 +29,7 @@
         </div>
         <div class="stat-card">
             <h3>Current Streak</h3>
-            <div class="stat-value">3 <span>Days</span></div>
+            <div class="stat-value">{{ current_streak }} <span>Days</span></div>
         </div>
     </div>
 

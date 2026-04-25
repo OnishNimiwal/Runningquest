@@ -47,7 +47,7 @@ def index():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    from models import TerritoryEventLog, User, Territory
+    from models import TerritoryEventLog, User, Territory, Run
     from datetime import datetime, timedelta
     from sqlalchemy import func
     from utils.decay import process_user_decay
@@ -61,6 +61,24 @@ def dashboard():
 
     # Get user's territories count
     user_territories = Territory.query.filter_by(user_id=current_user.id).count()
+
+    # Calculate Total Distance
+    total_dist_query = db.session.query(func.sum(Run.distance)).filter_by(user_id=current_user.id).scalar()
+    total_distance = total_dist_query if total_dist_query else 0.0
+
+    # Calculate Current Streak
+    runs = Run.query.filter_by(user_id=current_user.id).order_by(Run.date.desc()).all()
+    current_streak = 0
+    if runs:
+        current_date = datetime.utcnow().date()
+        last_run_date = runs[0].date.date()
+        if (current_date - last_run_date).days <= 1:
+            current_streak = 1
+            check_date = last_run_date - timedelta(days=1)
+            run_dates = set(r.date.date() for r in runs)
+            while check_date in run_dates:
+                current_streak += 1
+                check_date -= timedelta(days=1)
 
     # Calculate leaderboard for last 24h
     last_24h = datetime.utcnow() - timedelta(days=1)
@@ -82,7 +100,9 @@ def dashboard():
     return render_template('dashboard.html', title='Dashboard', 
                            user_territories=user_territories, 
                            leaderboard=leaderboard_query,
-                           days_inactive=days_inactive)
+                           days_inactive=days_inactive,
+                           total_distance=total_distance,
+                           current_streak=current_streak)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
