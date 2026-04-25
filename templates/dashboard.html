@@ -1,90 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Running Quest</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-</head>
-<body class="dashboard-body">
-    <nav class="top-nav">
-        <div class="logo">Running Quest</div>
-        <div class="user-actions">
-            <span>Hi, {{ current_user.username }}!</span>
-            <a href="{{ url_for('logout') }}" class="btn-outline">Logout</a>
-        </div>
-    </nav>
-
-    <div class="dashboard-wrapper">
-    <div class="dashboard-container">
-        <!-- Inactivity Decay Banners -->
-        {% if days_inactive > 3 %}
-        <div class="alert" style="background-color: #ef4444; color: white; padding: 1rem; border-radius: 10px; margin-bottom: 2rem; font-weight: bold; text-align: center; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);">
-            CRITICAL: You are actively losing territory due to inactivity! Start a run to stop the decay.
-        </div>
-        {% elif days_inactive > 0 %}
-        <div class="alert" style="background-color: #f59e0b; color: white; padding: 1rem; border-radius: 10px; margin-bottom: 2rem; font-weight: bold; text-align: center; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);">
-            WARNING: Your territories will begin decaying in {{ (3 - days_inactive)|round(1) }} days! Stay active.
-        </div>
-        {% endif %}
-
-        <!-- Welcome Section -->
-        <section class="welcome-section">
-            <h1>Ready to conquer, {{ current_user.username }}?</h1>
-            <p>Your city awaits. Lace up and start capturing territories.</p>
-        </section>
-
-        <!-- Stats Grid -->
-        <section class="stats-grid">
-            <div class="stat-card">
-                <h3>Total Distance</h3>
-                <div class="stat-value">42.5 <span>km</span></div>
-            </div>
-            <div class="stat-card">
-                <h3>Territories Owned</h3>
-                <div class="stat-value">4</div>
-            </div>
-            <div class="stat-card">
-                <h3>Current Streak</h3>
-                <div class="stat-value">3 <span>Days</span></div>
-            </div>
-        </section>
-
-        <!-- Main Action -->
-        <section class="action-section">
-            <button class="start-run-btn" onclick="window.location.href='{{ url_for('run_tracker') }}'">
-                <span class="btn-text">START RUN</span>
-                <span class="btn-subtext">Capture Territory</span>
-            </button>
-        </section>
-
-        <!-- Leaderboard -->
-        <section class="leaderboard-section">
-            <h2>Leaderboard</h2>
-            <div class="leaderboard-tabs">
-                <button class="tab active">Locality</button>
-                <button class="tab">City</button>
-                <button class="tab">State</button>
-                <button class="tab">Country</button>
-            </div>
-            <div class="leaderboard-list">
-                {% for entry in leaderboard %}
-                {% set rank_class = "" %}
-                {% if loop.index == 1 %}{% set rank_class = "top-1" %}
-                {% elif loop.index == 2 %}{% set rank_class = "top-2" %}
-                {% elif loop.index == 3 %}{% set rank_class = "top-3" %}
-                {% endif %}
-                <div class="leaderboard-item {{ rank_class }}">
-                    <span class="rank">#{{ loop.index }}</span>
-                    <span class="name" style="color: {{ entry.color }}">{{ entry.username }}</span>
-                    <span class="score">{{ entry.captures }} Captures</span>
-                </div>
-                {% else %}
-                <p style="text-align:center; color:#94a3b8; padding: 2rem;">No captures in the last 24 hours yet.</p>
-                {% endfor %}
-            </div>
-        </section>
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard-wrapper">
+    <!-- Inactivity Decay Banners -->
+    {% if days_inactive > 3 %}
+    <div class="alert alert-error">
+        CRITICAL: You are actively losing territory due to inactivity! Start a run to stop the decay.
     </div>
-</body>
-</html>
+    {% elif days_inactive > 0 %}
+    <div class="alert" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b;">
+        WARNING: Your territories will begin decaying in {{ (3 - days_inactive)|round(1) }} days! Stay active.
+    </div>
+    {% endif %}
+
+    <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Ready to conquer, {{ current_user.username }}?</h1>
+        <p style="color: var(--text-muted); font-size: 1.1rem;">Your city awaits. Lace up and start capturing territories.</p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Distance</h3>
+            <div class="stat-value">42.5 <span>km</span></div>
+        </div>
+        <div class="stat-card">
+            <h3>Territories Owned</h3>
+            <div class="stat-value">{{ user_territories }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Current Streak</h3>
+            <div class="stat-value">3 <span>Days</span></div>
+        </div>
+    </div>
+
+    <!-- Main Action -->
+    <div style="text-align: center; margin: 3rem 0;">
+        <a href="{{ url_for('run_tracker') }}" class="btn btn-primary pulse-glow" style="padding: 1.5rem 4rem; font-size: 1.5rem; border-radius: 50px;">
+            START RUN
+            <div style="font-size: 0.9rem; font-weight: 400; opacity: 0.8; margin-top: 0.5rem;">Capture Territory</div>
+        </a>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="leaderboard-section">
+        <h2 style="margin-bottom: 1.5rem;">Live 24h Leaderboard</h2>
+        <div class="leaderboard-list">
+            {% for entry in leaderboard %}
+            {% set rank_class = "" %}
+            {% if loop.index == 1 %}{% set rank_class = "top-1" %}
+            {% elif loop.index == 2 %}{% set rank_class = "top-2" %}
+            {% elif loop.index == 3 %}{% set rank_class = "top-3" %}
+            {% endif %}
+            <div class="leaderboard-item {{ rank_class }}">
+                <span class="rank">#{{ loop.index }}</span>
+                <span class="name" style="color: {{ entry.color }}">{{ entry.username }}</span>
+                <span class="score">{{ entry.captures }} Captures</span>
+            </div>
+            {% else %}
+            <p style="text-align:center; color: var(--text-muted); padding: 2rem;">No captures in the last 24 hours yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

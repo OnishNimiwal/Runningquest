@@ -1,37 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Running Quest | Conquer Your City</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body style="overflow: hidden; margin: 0; padding: 0;">
-    <nav class="navbar" style="position: absolute; width: 100%; top: 0; padding: 1rem 2rem; display: flex; justify-content: flex-end; z-index: 100; box-sizing: border-box;">
+{% extends 'base.html' %}
+{% block content %}
+<div class="hero-container">
+    <div class="grid-background"></div>
+    <h1 class="hero-title">Run to Conquer Your City</h1>
+    <p class="hero-subtitle">Turn your daily runs into a massive multiplayer turf war. Claim your grid. Defend your territory. Become a legend.</p>
+    <div style="display: flex; gap: 1rem; justify-content: center;">
         {% if current_user.is_authenticated %}
-            <span style="color: white; margin-right: 15px; align-self: center; font-weight: 600;">Hi, {{ current_user.username }}!</span>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Dashboard</a>
-            <a href="{{ url_for('logout') }}" class="btn btn-secondary" style="margin-left: 10px; background: rgba(239,68,68,0.2); border-color: #ef4444; color: #ef4444;">Logout</a>
+            <a href="{{ url_for('run_tracker') }}" class="btn btn-primary pulse-glow" style="font-size: 1.25rem; padding: 1rem 2.5rem;">Start Running</a>
         {% else %}
-            <a href="{{ url_for('login') }}" class="btn btn-secondary">Login</a>
-            <a href="{{ url_for('register') }}" class="btn btn-primary pulse-glow" style="margin-left: 10px;">Register</a>
+            <a href="{{ url_for('register') }}" class="btn btn-primary pulse-glow" style="font-size: 1.25rem; padding: 1rem 2.5rem;">Join the War</a>
         {% endif %}
-    </nav>
-
-    <div class="landing-wrapper">
-        <div class="grid-background"></div>
-        <div class="landing-container" style="text-align: center; z-index: 10; padding: 0 20px;">
-            <h1 class="landing-title">Run to Conquer Your City</h1>
-            <p class="landing-subtitle" style="color: #94a3b8; font-size: 1.25rem; max-width: 600px; margin: 0 auto 2.5rem auto; line-height: 1.6;">Turn your daily runs into a massive multiplayer turf war. Claim your grid. Defend your territory. Become a legend.</p>
-            <div class="landing-actions" style="display: flex; gap: 1rem; justify-content: center;">
-                {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('run_tracker') }}" class="btn btn-primary pulse-glow" style="font-size: 1.25rem; padding: 1rem 2.5rem;">Start Running</a>
-                {% else %}
-                    <a href="{{ url_for('register') }}" class="btn btn-primary pulse-glow" style="font-size: 1.25rem; padding: 1rem 2.5rem;">Join the War</a>
-                {% endif %}
-            </div>
-        </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
