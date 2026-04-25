@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -11,6 +12,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     color = db.Column(db.String(7), default='#3b82f6')
     score = db.Column(db.Integer, default=0)
+    last_active = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -56,3 +58,11 @@ class TerritoryEventLog(db.Model):
 
     captor = db.relationship('User', foreign_keys=[captured_by_user_id])
     previous_owner = db.relationship('User', foreign_keys=[previous_owner_id])
+
+class TerritoryDecayLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    cell_id = db.Column(db.String(12), nullable=False)
+    lost_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    loser = db.relationship('User', backref=db.backref('decay_logs', lazy=True))

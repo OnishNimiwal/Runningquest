@@ -32,6 +32,14 @@ def dashboard():
     from models import TerritoryEventLog, User, Territory
     from datetime import datetime, timedelta
     from sqlalchemy import func
+    from utils.decay import process_user_decay
+
+    # Step 8: Check and process territory decay
+    process_user_decay(current_user)
+
+    days_inactive = 0
+    if current_user.last_active:
+        days_inactive = (datetime.utcnow() - current_user.last_active).total_seconds() / 86400.0
 
     # Get user's territories count
     user_territories = Territory.query.filter_by(user_id=current_user.id).count()
@@ -55,7 +63,8 @@ def dashboard():
 
     return render_template('dashboard.html', title='Dashboard', 
                            user_territories=user_territories, 
-                           leaderboard=leaderboard_query)
+                           leaderboard=leaderboard_query,
+                           days_inactive=days_inactive)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -159,6 +168,7 @@ def capture_cell():
 
     # Update user score
     current_user.score += 1
+    current_user.last_active = datetime.utcnow()
 
     db.session.commit()
 
