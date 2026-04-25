@@ -9,6 +9,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), index=True, unique=True, nullable=False)
     email = db.Column(db.String(120), index=True, unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
+    color = db.Column(db.String(7), default='#3b82f6')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -33,3 +34,14 @@ class Run(db.Model):
 
     def __repr__(self):
         return f'<Run {self.id} User {self.user_id}>'
+
+class Territory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    cell_id = db.Column(db.String(12), unique=True, index=True, nullable=False) # Geohash string
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Who captured it
+    date_captured = db.Column(db.DateTime, default=datetime.utcnow)
+
+    owner = db.relationship('User', backref=db.backref('territories', lazy=True))
+
+    def __repr__(self):
+        return f'<Territory {self.cell_id} Owner {self.user_id}>'

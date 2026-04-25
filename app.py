@@ -37,7 +37,9 @@ def register():
         return redirect(url_for('index'))
     form = RegistrationForm()
     if form.validate_on_submit():
-        user = User(username=form.username.data, email=form.email.data)
+        import random
+        rand_color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+        user = User(username=form.username.data, email=form.email.data, color=rand_color)
         user.set_password(form.password.data)
         db.session.add(user)
         db.session.commit()
@@ -79,16 +81,22 @@ def save_run():
         return jsonify({'error': 'No data provided'}), 400
     
     from models import Run
+    route_str = data.get('route_data', '{}')
     new_run = Run(
         user_id=current_user.id,
         distance=data.get('distance', 0.0),
         duration=data.get('duration', 0),
-        route_data=data.get('route_data', '{}')
+        route_data=route_str
     )
     db.session.add(new_run)
     db.session.commit()
     
-    return jsonify({'success': True, 'run_id': new_run.id}), 201
+    # Step 5 Logic: Calculate Grid Cells
+    from utils.grid import route_to_cells
+    cells = route_to_cells(route_str)
+    print(f"DEBUG: Run calculated {len(cells)} unique grid cells: {cells}")
+    
+    return jsonify({'success': True, 'run_id': new_run.id, 'cells_calculated': cells}), 201
 
 if __name__ == '__main__':
     with app.app_context():
