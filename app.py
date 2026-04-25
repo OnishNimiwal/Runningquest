@@ -22,7 +22,14 @@ def load_user(user_id):
 
 @app.route('/')
 def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
     return render_template('index.html')
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html', title='Dashboard')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():

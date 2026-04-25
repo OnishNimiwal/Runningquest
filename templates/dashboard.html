@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Running Quest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard-body">
+    <nav class="top-nav">
+        <div class="logo">Running Quest</div>
+        <div class="user-actions">
+            <span>Hi, {{ current_user.username }}!</span>
+            <a href="{{ url_for('logout') }}" class="btn-outline">Logout</a>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+            <h1>Ready to conquer, {{ current_user.username }}?</h1>
+            <p>Your city awaits. Lace up and start capturing territories.</p>
+        </section>
+
+        <!-- Stats Grid -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Distance</h3>
+                <div class="stat-value">42.5 <span>km</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Territories Owned</h3>
+                <div class="stat-value">4</div>
+            </div>
+            <div class="stat-card">
+                <h3>Current Streak</h3>
+                <div class="stat-value">3 <span>Days</span></div>
+            </div>
+        </section>
+
+        <!-- Main Action -->
+        <section class="action-section">
+            <button class="start-run-btn" onclick="alert('GPS tracking will initialize here in the future!')">
+                <span class="btn-text">START RUN</span>
+                <span class="btn-subtext">Capture Territory</span>
+            </button>
+        </section>
+
+        <!-- Leaderboard -->
+        <section class="leaderboard-section">
+            <h2>Leaderboard</h2>
+            <div class="leaderboard-tabs">
+                <button class="tab active">Locality</button>
+                <button class="tab">City</button>
+                <button class="tab">State</button>
+                <button class="tab">Country</button>
+            </div>
+            <div class="leaderboard-list">
+                <div class="leaderboard-item top-rank">
+                    <span class="rank">#1</span>
+                    <span class="name">Speedster99</span>
+                    <span class="score">15 Territories</span>
+                </div>
+                <div class="leaderboard-item">
+                    <span class="rank">#2</span>
+                    <span class="name">MarathonMike</span>
+                    <span class="score">12 Territories</span>
+                </div>
+                <div class="leaderboard-item">
+                    <span class="rank">#3</span>
+                    <span class="name">{{ current_user.username }}</span>
+                    <span class="score">4 Territories</span>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
