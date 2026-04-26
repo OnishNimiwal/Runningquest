@@ -87,29 +87,40 @@
                 attribution: '&copy; CARTO'
             }).addTo(map);
 
-            fetch('/api/territories')
+            fetch('/api/user_map_data')
                 .then(r => r.json())
                 .then(data => {
                     let bounds = [];
-                    data.forEach(t => {
-                        let boundsObj = Geohash.bounds(t.cell_id);
-                        let leafletBounds = [
-                            [boundsObj.sw.lat, boundsObj.sw.lon],
-                            [boundsObj.ne.lat, boundsObj.ne.lon]
-                        ];
-                        
-                        if (t.owner === '{{ current_user.username }}') {
+                    
+                    if(data.cells) {
+                        data.cells.forEach(cell_id => {
+                            let boundsObj = Geohash.bounds(cell_id);
+                            let leafletBounds = [
+                                [boundsObj.sw.lat, boundsObj.sw.lon],
+                                [boundsObj.ne.lat, boundsObj.ne.lon]
+                            ];
                             L.rectangle(leafletBounds, {
-                                color: t.color,
-                                weight: 2,
-                                fillOpacity: 0.4
+                                color: data.color, weight: 1, fillOpacity: 0.15, opacity: 0.3
                             }).addTo(map);
-                            bounds.push(leafletBounds);
-                        }
-                    });
+                            bounds.push(leafletBounds[0]);
+                            bounds.push(leafletBounds[1]);
+                        });
+                    }
+
+                    if(data.routes) {
+                        data.routes.forEach(routeGeoJSON => {
+                            if(routeGeoJSON && routeGeoJSON.geometry && routeGeoJSON.geometry.coordinates) {
+                                let latLngs = routeGeoJSON.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                                L.polyline(latLngs, {
+                                    color: data.color, weight: 4, opacity: 1.0, lineCap: 'round', lineJoin: 'round', className: 'glow-path'
+                                }).addTo(map);
+                                latLngs.forEach(ll => bounds.push(ll));
+                            }
+                        });
+                    }
 
                     if (bounds.length > 0) {
-                        map.fitBounds(bounds);
+                        map.fitBounds(bounds, { padding: [20, 20] });
                     } else {
                         {% if current_user.last_lat and current_user.last_lng %}
                         map.setView([{{ current_user.last_lat }}, {{ current_user.last_lng }}], 14);

@@ -246,6 +246,32 @@ def get_territories():
         })
     return jsonify(result), 200
 
+@app.route('/api/user_map_data', methods=['GET'])
+@login_required
+def user_map_data():
+    from models import Territory, Run
+    import json
+
+    # Get user territories
+    territories = Territory.query.filter_by(user_id=current_user.id).all()
+    cells = [t.cell_id for t in territories]
+
+    # Get user runs
+    runs = Run.query.filter_by(user_id=current_user.id).all()
+    routes = []
+    for r in runs:
+        if r.route_data:
+            try:
+                routes.append(json.loads(r.route_data))
+            except:
+                pass
+
+    return jsonify({
+        'color': current_user.color,
+        'cells': cells,
+        'routes': routes
+    }), 200
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
