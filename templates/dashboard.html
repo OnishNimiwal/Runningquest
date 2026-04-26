@@ -100,7 +100,7 @@
                                 [boundsObj.ne.lat, boundsObj.ne.lon]
                             ];
                             L.rectangle(leafletBounds, {
-                                color: data.color, weight: 1, fillOpacity: 0.35, opacity: 0.15
+                                color: data.color, weight: 0, fillOpacity: 0.25, opacity: 0
                             }).addTo(map);
                             bounds.push(leafletBounds[0]);
                             bounds.push(leafletBounds[1]);
