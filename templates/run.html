@@ -50,6 +50,43 @@
             gap: 1rem;
             margin-top: auto;
         }
+
+        /* Mobile Responsiveness for Run Tracking */
+        @media (max-width: 768px) {
+            .run-wrapper {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - 120px);
+            }
+            #map {
+                order: 1;
+                min-height: 50vh;
+                width: 100%;
+            }
+            .stats-panel {
+                order: 2;
+                width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: space-around;
+                padding: 1rem;
+            }
+            .live-stat {
+                flex: 1 1 30%;
+                padding: 0.5rem;
+            }
+            .live-stat h2 {
+                font-size: 1.5rem;
+            }
+            .controls {
+                width: 100%;
+                flex-direction: row;
+                gap: 0.5rem;
+            }
+            .controls button {
+                flex: 1;
+            }
+        }
     </style>
 {% endblock %}
 {% block content %}
