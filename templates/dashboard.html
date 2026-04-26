@@ -1,4 +1,8 @@
 {% extends 'base.html' %}
+{% block head %}
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+{% endblock %}
 {% block content %}
 <div class="dashboard-wrapper">
     <!-- Inactivity Decay Banners -->
@@ -33,6 +37,13 @@
         </div>
     </div>
 
+    <!-- Territory Map -->
+    <div class="map-section">
+        <h2 style="margin-bottom: 1rem;">Your Territories</h2>
+        <div id="dashboard-map"></div>
+        <p style="text-align:center; color: var(--text-muted); margin-top:1rem; font-size: 0.9rem;">This map highlights all geographic grid cells you currently own.</p>
+    </div>
+
     <!-- Main Action -->
     <div style="text-align: center; margin: 3rem 0;">
         <a href="{{ url_for('run_tracker') }}" class="btn btn-primary pulse-glow" style="padding: 1.5rem 4rem; font-size: 1.5rem; border-radius: 50px;">
@@ -62,4 +73,51 @@
         </div>
     </div>
 </div>
+</div>
+{% endblock %}
+{% block scripts %}
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Geohash JS -->
+    <script src="https://cdn.jsdelivr.net/npm/latlon-geohash@2.0.0/latlon-geohash.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var map = L.map('dashboard-map').setView([0, 0], 2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; CARTO'
+            }).addTo(map);
+
+            fetch('/api/territories')
+                .then(r => r.json())
+                .then(data => {
+                    let bounds = [];
+                    data.forEach(t => {
+                        let boundsObj = Geohash.bounds(t.cell_id);
+                        let leafletBounds = [
+                            [boundsObj.sw.lat, boundsObj.sw.lon],
+                            [boundsObj.ne.lat, boundsObj.ne.lon]
+                        ];
+                        
+                        if (t.owner === '{{ current_user.username }}') {
+                            L.rectangle(leafletBounds, {
+                                color: t.color,
+                                weight: 2,
+                                fillOpacity: 0.4
+                            }).addTo(map);
+                            bounds.push(leafletBounds);
+                        }
+                    });
+
+                    if (bounds.length > 0) {
+                        map.fitBounds(bounds);
+                    } else {
+                        {% if current_user.last_lat and current_user.last_lng %}
+                        map.setView([{{ current_user.last_lat }}, {{ current_user.last_lng }}], 14);
+                        {% else %}
+                        map.setView([20, 0], 2);
+                        {% endif %}
+                    }
+                });
+        });
+    </script>
 {% endblock %}

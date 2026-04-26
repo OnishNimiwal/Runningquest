@@ -319,3 +319,22 @@ a { text-decoration: none; color: var(--primary); }
         font-size: 2rem !important;
     }
 }
+
+
+/* ==========================================================================
+   DASHBOARD MAP
+   ========================================================================== */
+.map-section {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 3rem;
+}
+#dashboard-map {
+    height: 400px;
+    width: 100%;
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 10;
+}
