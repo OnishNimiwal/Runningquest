@@ -90,12 +90,6 @@ function startRun() {
         // GeoJSON uses [lng, lat]
         routeCoordinates.push([lng, lat]);
 
-        if (typeof Geohash !== 'undefined') {
-            const currentHash = Geohash.encode(lat, lng, 7);
-            if (!capturedCells.has(currentHash)) {
-                capturedCells.add(currentHash);
-                captureTerritory(currentHash, lat, lng);
-            }
         }
 
     }, (error) => {
@@ -186,72 +180,29 @@ if (navigator.geolocation) {
     });
 }
 
-let drawnRectangles = {}; // Maps cell_id to L.rectangle object
+let drawnPolygons = [];
 
 async function loadGlobalTerritories() {
     try {
-        const response = await fetch('/api/territories');
-        const territories = await response.json();
+        const response = await fetch('/api/user_map_data');
+        const data = await response.json();
         
-        if (typeof Geohash !== 'undefined') {
-            territories.forEach(t => {
-                const bounds = Geohash.bounds(t.cell_id);
-                const rectBounds = [[bounds.sw.lat, bounds.sw.lon], [bounds.ne.lat, bounds.ne.lon]];
-                
-                const rect = L.rectangle(rectBounds, {
-                    color: t.color,
-                    weight: 2,
-                    fillOpacity: 0.4
-                }).addTo(map);
-                
-                rect.bindTooltip(t.owner);
-                drawnRectangles[t.cell_id] = rect;
+        if (data.cells && data.cells.length > 0) {
+            data.cells.forEach(t => {
+                if (t.geojson) {
+                    L.geoJSON(t.geojson, {
+                        style: {
+                            color: t.color,
+                            weight: 2,
+                            fillOpacity: 0.35,
+                            fillColor: t.color
+                        }
+                    }).bindTooltip('Territory of ' + t.owner).addTo(map);
+                }
             });
         }
     } catch (e) {
         console.error("Failed to load global territories", e);
-    }
-}
-
-async function captureTerritory(cell_id, lat, lng) {
-    try {
-        const response = await fetch('/api/capture_cell', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({cell_id: cell_id, lat: lat, lng: lng})
-        });
-        const data = await response.json();
-        
-        if (data.status === 'suspicious') {
-            alert("ANTI-CHEAT TRIGGERED: Impossible speed detected! Territory captures disabled for this run.");
-            return;
-        }
-
-        if (data.status === 'captured') {
-            capturesCount++;
-            capturesDisplay.textContent = capturesCount;
-            
-            if (typeof Geohash !== 'undefined') {
-                if (drawnRectangles[cell_id]) {
-                    // Update existing (takeover)
-                    drawnRectangles[cell_id].setStyle({color: data.color});
-                    drawnRectangles[cell_id].bindTooltip("Captured by you!");
-                } else {
-                    // Create new
-                    const bounds = Geohash.bounds(cell_id);
-                    const rectBounds = [[bounds.sw.lat, bounds.sw.lon], [bounds.ne.lat, bounds.ne.lon]];
-                    const rect = L.rectangle(rectBounds, {
-                        color: data.color,
-                        weight: 2,
-                        fillOpacity: 0.4
-                    }).addTo(map);
-                    rect.bindTooltip("Captured by you!");
-                    drawnRectangles[cell_id] = rect;
-                }
-            }
-        }
-    } catch (e) {
-        console.error('Capture failed:', e);
     }
 }
 

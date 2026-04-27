@@ -75,7 +75,7 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <!-- Turf.js - open source spatial analysis for smooth territory polygons -->
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var map = L.map('dashboard-map').setView([0, 0], 2);
@@ -92,49 +92,34 @@
                     console.log('[RunQuest] Map data received:', data);
                     let bounds = [];
 
-                    // Group valid routes by user color
-                    const userRoutes = {};
-                    if (data.routes && data.routes.length > 0) {
-                        data.routes.forEach(routeObj => {
-                            const rg = routeObj.geojson;
-                            if (rg && rg.geometry && rg.geometry.coordinates && rg.geometry.coordinates.length > 1) {
-                                if (!userRoutes[routeObj.color]) {
-                                    userRoutes[routeObj.color] = { color: routeObj.color, owner: routeObj.owner, features: [] };
+                    // 1. Draw territories (Actual polygons from backend)
+                    if (data.cells && data.cells.length > 0) {
+                        data.cells.forEach(t => {
+                            if (t.geojson) {
+                                try {
+                                    const geoJsonLayer = L.geoJSON(t.geojson, {
+                                        style: {
+                                            color: t.color,
+                                            weight: 3,
+                                            opacity: 1.0,
+                                            fillColor: t.color,
+                                            fillOpacity: 0.35
+                                        }
+                                    }).bindTooltip('Territory of ' + t.owner, { sticky: true }).addTo(map);
+                                    
+                                    const layerBounds = geoJsonLayer.getBounds();
+                                    if (layerBounds.isValid()) {
+                                        bounds.push(layerBounds.getSouthWest());
+                                        bounds.push(layerBounds.getNorthEast());
+                                    }
+                                } catch(e) {
+                                    console.warn('[RunQuest] Error rendering territory polygon:', e);
                                 }
-                                userRoutes[routeObj.color].features.push(rg);
                             }
                         });
                     }
 
-                    // INTVL-style: buffer each route + union all for same user = smooth organic polygon
-                    Object.values(userRoutes).forEach(ud => {
-                        let poly = null;
-                        ud.features.forEach(line => {
-                            try {
-                                const buf = turf.buffer(line, 0.04, { units: 'kilometers' });
-                                poly = poly ? turf.union(poly, buf) : buf;
-                            } catch(e) {
-                                console.warn('[RunQuest] Buffer error:', e);
-                            }
-                        });
-                        if (poly) {
-                            L.geoJSON(poly, {
-                                style: {
-                                    color: ud.color,
-                                    weight: 3,
-                                    opacity: 1.0,
-                                    fillColor: ud.color,
-                                    fillOpacity: 0.35
-                                }
-                            }).bindTooltip('Territory of ' + ud.owner, { sticky: true }).addTo(map);
-
-                            const bb = turf.bbox(poly);
-                            bounds.push([bb[1], bb[0]]);
-                            bounds.push([bb[3], bb[2]]);
-                        }
-                    });
-
-                    // Draw glowing GPS paths on top
+                    // 2. Draw glowing GPS paths on top
                     if (data.routes && data.routes.length > 0) {
                         data.routes.forEach(routeObj => {
                             try {

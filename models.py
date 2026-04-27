@@ -44,29 +44,12 @@ class Run(db.Model):
 
 class Territory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    cell_id = db.Column(db.String(12), unique=True, index=True, nullable=False) # Geohash string
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Who captured it
-    date_captured = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False) # One territory per user
+    geojson = db.Column(db.Text, nullable=True) # Unified MultiPolygon GeoJSON string
+    area_sqkm = db.Column(db.Float, default=0.0) # Calculated total area in sq kilometers
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow)
 
-    owner = db.relationship('User', backref=db.backref('territories', lazy=True))
+    owner = db.relationship('User', backref=db.backref('territory', uselist=False, lazy=True))
 
     def __repr__(self):
-        return f'<Territory {self.cell_id} Owner {self.user_id}>'
-
-class TerritoryEventLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    cell_id = db.Column(db.String(12), nullable=False)
-    captured_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    previous_owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
-    captor = db.relationship('User', foreign_keys=[captured_by_user_id])
-    previous_owner = db.relationship('User', foreign_keys=[previous_owner_id])
-
-class TerritoryDecayLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    cell_id = db.Column(db.String(12), nullable=False)
-    lost_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
-    loser = db.relationship('User', backref=db.backref('decay_logs', lazy=True))
+        return f'<Territory User {self.user_id}>'

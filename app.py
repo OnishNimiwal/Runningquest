@@ -122,17 +122,17 @@ def dashboard():
     else:
         warning_state = 'danger'        # streak broken, decay active
 
-    # Leaderboard: rank all users by total territory cells currently owned
+    # Leaderboard: rank all users by total territory area
     leaderboard_query = db.session.query(
         User.username,
         User.color,
-        func.count(Territory.id).label('area')
+        Territory.area_sqkm.label('area')
     ).join(
         Territory, User.id == Territory.user_id
-    ).group_by(
-        User.id
+    ).filter(
+        Territory.area_sqkm > 0
     ).order_by(
-        func.count(Territory.id).desc()
+        Territory.area_sqkm.desc()
     ).limit(10).all()
 
     return render_template('dashboard.html', title='Dashboard',
@@ -195,7 +195,8 @@ def save_run():
     if not data:
         return jsonify({'error': 'No data provided'}), 400
     
-    from models import Run, Territory, TerritoryEventLog
+    from models import Run, Territory, User
+    from utils.territory import create_polygon_from_route, merge_territories, subtract_territory, geojson_to_shapely, shapely_to_geojson, calculate_area
     from datetime import datetime
     
     route_str = data.get('route_data', '{}')
@@ -207,106 +208,51 @@ def save_run():
     )
     db.session.add(new_run)
     
-    # Robust fallback: Calculate and grant Grid Cells at the end of the run
-    from utils.grid import route_to_cells
-    cells = route_to_cells(route_str)
-    
-    captured_count = 0
-    if not current_user.is_suspicious_run:
-        for cell_id in cells:
-            t = Territory.query.filter_by(cell_id=cell_id).first()
-            if not t:
-                t = Territory(cell_id=cell_id, user_id=current_user.id)
-                db.session.add(t)
-                event = TerritoryEventLog(cell_id=cell_id, captured_by_user_id=current_user.id)
-                db.session.add(event)
-                current_user.score += 1
-                captured_count += 1
-            elif t.user_id != current_user.id:
-                prev_owner = t.user_id
-                t.user_id = current_user.id
-                t.date_captured = datetime.utcnow()
-                event = TerritoryEventLog(cell_id=cell_id, captured_by_user_id=current_user.id, previous_owner_id=prev_owner)
-                db.session.add(event)
-                current_user.score += 1
-                captured_count += 1
-        
-        if captured_count > 0:
-            current_user.last_active = datetime.utcnow()
-
-    db.session.commit()
-    
-    return jsonify({'success': True, 'run_id': new_run.id, 'cells_calculated': cells, 'captured_count': captured_count}), 201
-
-@app.route('/api/capture_cell', methods=['POST'])
-@login_required
-def capture_cell():
-    data = request.get_json()
-    cell_id = data.get('cell_id')
-    lat = data.get('lat')
-    lng = data.get('lng')
-
-    if not cell_id or lat is None or lng is None:
-        return jsonify({'error': 'Missing cell data or coordinates'}), 400
-
     if current_user.is_suspicious_run:
-        return jsonify({'status': 'suspicious', 'message': 'Anti-cheat triggered: Run permanently marked suspicious.'}), 200
-
-    from utils.anticheat import validate_movement
-    is_valid = validate_movement(current_user, float(lat), float(lng))
-    
-    if not is_valid:
-        current_user.is_suspicious_run = True
         db.session.commit()
-        return jsonify({'status': 'suspicious', 'message': 'Anti-cheat triggered: Impossible speed detected.'}), 200
+        return jsonify({'success': True, 'run_id': new_run.id, 'message': 'Run saved but anti-cheat flag active. No territory gained.'}), 201
 
-    from models import Territory, TerritoryEventLog
-    from datetime import datetime
-    
-    # Check if territory exists
-    territory = Territory.query.filter_by(cell_id=cell_id).first()
-    prev_owner_id = None
-    
-    if territory:
-        if territory.user_id == current_user.id:
-            return jsonify({'status': 'already_owned'}), 200
-        prev_owner_id = territory.user_id
-        territory.user_id = current_user.id
-        territory.date_captured = datetime.utcnow()
+    # 1. Convert run to Polygon
+    new_poly = create_polygon_from_route(route_str)
+    if not new_poly:
+        db.session.commit()
+        return jsonify({'success': True, 'run_id': new_run.id, 'message': 'Run saved but not enough data for territory.'}), 201
+
+    # 2. Get current user's territory and merge
+    user_terr = Territory.query.filter_by(user_id=current_user.id).first()
+    if user_terr and user_terr.geojson:
+        existing_poly = geojson_to_shapely(user_terr.geojson)
+        merged_poly = merge_territories(existing_poly, new_poly)
     else:
-        territory = Territory(cell_id=cell_id, user_id=current_user.id)
-        db.session.add(territory)
+        merged_poly = new_poly
+        if not user_terr:
+            user_terr = Territory(user_id=current_user.id)
+            db.session.add(user_terr)
 
-    # Log the event
-    event = TerritoryEventLog(
-        cell_id=cell_id,
-        captured_by_user_id=current_user.id,
-        previous_owner_id=prev_owner_id
-    )
-    db.session.add(event)
+    user_terr.geojson = shapely_to_geojson(merged_poly)
+    user_terr.area_sqkm = calculate_area(merged_poly)
+    user_terr.last_updated = datetime.utcnow()
+    current_user.score = int(user_terr.area_sqkm * 100000) # update score based on area
 
-    # Update user score
-    current_user.score += 1
+    # 3. Subtract from opponents
+    opponents = Territory.query.filter(Territory.user_id != current_user.id).all()
+    for opp in opponents:
+        if opp.geojson:
+            opp_poly = geojson_to_shapely(opp.geojson)
+            if opp_poly and merged_poly and opp_poly.intersects(merged_poly):
+                diff_poly = subtract_territory(opp_poly, new_poly) # subtract only the new run area
+                opp.geojson = shapely_to_geojson(diff_poly)
+                opp.area_sqkm = calculate_area(diff_poly)
+                
+                opp_user = User.query.get(opp.user_id)
+                if opp_user:
+                    opp_user.score = int(opp.area_sqkm * 100000)
+
     current_user.last_active = datetime.utcnow()
-
     db.session.commit()
-
-    return jsonify({'status': 'captured', 'color': current_user.color}), 200
-
-@app.route('/api/territories', methods=['GET'])
-@login_required
-def get_territories():
-    from models import Territory, User
-    territories = db.session.query(Territory, User).join(User, Territory.user_id == User.id).all()
     
-    result = []
-    for t, u in territories:
-        result.append({
-            'cell_id': t.cell_id,
-            'color': u.color,
-            'owner': u.username
-        })
-    return jsonify(result), 200
+    return jsonify({'success': True, 'run_id': new_run.id, 'area': user_terr.area_sqkm}), 201
+
 
 @app.route('/api/user_map_data', methods=['GET'])
 @login_required
@@ -314,18 +260,22 @@ def user_map_data():
     from models import Territory, Run, User
     import json
 
-    # Get all territories globally to show turf war
+    # Get all territories globally
     territories = db.session.query(Territory, User).join(User, Territory.user_id == User.id).all()
-    cells_data = []
+    cells_data = [] # keeping name for compatibility with frontend mapping
     for t, u in territories:
-        cells_data.append({
-            'cell_id': t.cell_id,
-            'color': u.color,
-            'owner': u.username
-        })
+        if t.geojson:
+            try:
+                cells_data.append({
+                    'geojson': json.loads(t.geojson),
+                    'color': u.color,
+                    'owner': u.username
+                })
+            except:
+                pass
 
-    # Get ALL runs from all users to draw intersecting public paths
-    runs_data = db.session.query(Run, User).join(User, Run.user_id == User.id).all()
+    # Get recent runs for glowing path
+    runs_data = db.session.query(Run, User).join(User, Run.user_id == User.id).order_by(Run.date.desc()).limit(50).all()
     routes = []
     for r, u in runs_data:
         if r.route_data:
@@ -340,7 +290,7 @@ def user_map_data():
 
     return jsonify({
         'color': current_user.color,
-        'cells': cells_data,
+        'cells': cells_data, # This now contains actual polygon geojson, not cell IDs
         'routes': routes
     }), 200
 
@@ -348,69 +298,71 @@ def user_map_data():
 @login_required
 def debug_map():
     from models import Territory, Run
-    import json
-    
     runs = Run.query.filter_by(user_id=current_user.id).all()
-    territories = Territory.query.filter_by(user_id=current_user.id).all()
-    
-    run_info = []
-    for r in runs:
-        coords_count = 0
-        if r.route_data:
-            try:
-                parsed = json.loads(r.route_data)
-                coords = parsed.get('geometry', {}).get('coordinates', [])
-                coords_count = len(coords)
-            except:
-                coords_count = -1  # parse error
-        run_info.append({'run_id': r.id, 'distance': r.distance, 'coords_in_route': coords_count})
+    user_terr = Territory.query.filter_by(user_id=current_user.id).first()
     
     return jsonify({
         'username': current_user.username,
         'color': current_user.color,
         'total_runs': len(runs),
-        'total_territories': len(territories),
-        'territory_cells': [t.cell_id for t in territories],
-        'runs': run_info
+        'territory_area': user_terr.area_sqkm if user_terr else 0.0,
+        'has_geojson': bool(user_terr and user_terr.geojson)
     }), 200
 
 @app.route('/api/fix_territories')
 def fix_territories():
-    from models import Run, Territory, TerritoryEventLog, User
-    from utils.grid import route_to_cells
+    from models import Run, Territory, User
+    from utils.territory import create_polygon_from_route, merge_territories, subtract_territory, geojson_to_shapely, shapely_to_geojson, calculate_area
     from datetime import datetime
     
-    runs = Run.query.all()
-    count = 0
+    # 1. Clear all existing territories
+    db.session.query(Territory).delete()
+    db.session.commit()
+    
+    # 2. Re-process all runs sequentially (oldest to newest)
+    runs = Run.query.order_by(Run.date.asc()).all()
+    processed = 0
     for run in runs:
         if not run.route_data: continue
-        try:
-            cells = route_to_cells(run.route_data)
-            for cell_id in cells:
-                t = Territory.query.filter_by(cell_id=cell_id).first()
-                if not t:
-                    t = Territory(cell_id=cell_id, user_id=run.user_id)
-                    db.session.add(t)
-                    event = TerritoryEventLog(cell_id=cell_id, captured_by_user_id=run.user_id)
-                    db.session.add(event)
-                    user = User.query.get(run.user_id)
-                    if user:
-                        user.score += 1
-                    count += 1
-                elif t.user_id != run.user_id:
-                    prev_owner = t.user_id
-                    t.user_id = run.user_id
-                    t.date_captured = datetime.utcnow()
-                    event = TerritoryEventLog(cell_id=cell_id, captured_by_user_id=run.user_id, previous_owner_id=prev_owner)
-                    db.session.add(event)
-                    user = User.query.get(run.user_id)
-                    if user:
-                        user.score += 1
-                    count += 1
-        except Exception as e:
-            pass
-    db.session.commit()
-    return f"Successfully processed existing runs and retroactively granted {count} territories to the database!"
+        
+        new_poly = create_polygon_from_route(run.route_data)
+        if not new_poly: continue
+            
+        user_terr = Territory.query.filter_by(user_id=run.user_id).first()
+        if user_terr and user_terr.geojson:
+            existing_poly = geojson_to_shapely(user_terr.geojson)
+            merged_poly = merge_territories(existing_poly, new_poly)
+        else:
+            merged_poly = new_poly
+            if not user_terr:
+                user_terr = Territory(user_id=run.user_id)
+                db.session.add(user_terr)
+                
+        user_terr.geojson = shapely_to_geojson(merged_poly)
+        user_terr.area_sqkm = calculate_area(merged_poly)
+        user_terr.last_updated = datetime.utcnow()
+        
+        user = User.query.get(run.user_id)
+        if user:
+            user.score = int(user_terr.area_sqkm * 100000)
+
+        # Subtract from others
+        opponents = Territory.query.filter(Territory.user_id != run.user_id).all()
+        for opp in opponents:
+            if opp.geojson:
+                opp_poly = geojson_to_shapely(opp.geojson)
+                if opp_poly and merged_poly and opp_poly.intersects(merged_poly):
+                    diff_poly = subtract_territory(opp_poly, new_poly)
+                    opp.geojson = shapely_to_geojson(diff_poly)
+                    opp.area_sqkm = calculate_area(diff_poly)
+                    opp_user = User.query.get(opp.user_id)
+                    if opp_user:
+                        opp_user.score = int(opp.area_sqkm * 100000)
+        
+        processed += 1
+        db.session.commit() # Commit each step to persist state for next run
+        
+    return f"Successfully wiped and rebuilt {processed} run territories into the new Polygon system!"
 
 if __name__ == '__main__':
     with app.app_context():
