@@ -84,36 +84,58 @@
             }).addTo(map);
 
             fetch('/api/user_map_data')
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('API error: ' + r.status);
+                    return r.json();
+                })
                 .then(data => {
+                    console.log('[RunQuest] Map data received:', data);
                     let bounds = [];
-                    
-                    if(data.cells) {
-                        data.cells.forEach(cell => {
-                            let boundsObj = Geohash.bounds(cell.cell_id);
-                            let leafletBounds = [
-                                [boundsObj.sw.lat, boundsObj.sw.lon],
-                                [boundsObj.ne.lat, boundsObj.ne.lon]
-                            ];
-                            L.rectangle(leafletBounds, {
-                                color: cell.color, weight: 1.5, opacity: 0.8, fillOpacity: 0.25
-                            }).bindTooltip('Owned by ' + cell.owner).addTo(map);
-                            bounds.push(leafletBounds[0]);
-                            bounds.push(leafletBounds[1]);
-                        });
-                    }
 
-                    if(data.routes) {
-                        data.routes.forEach(routeObj => {
-                            let routeGeoJSON = routeObj.geojson;
-                            if(routeGeoJSON && routeGeoJSON.geometry && routeGeoJSON.geometry.coordinates) {
-                                let latLngs = routeGeoJSON.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                                L.polyline(latLngs, {
-                                    color: routeObj.color, weight: 4, opacity: 1.0, lineCap: 'round', lineJoin: 'round', className: 'glow-path'
-                                }).bindTooltip('Run by ' + routeObj.owner).addTo(map);
-                                latLngs.forEach(ll => bounds.push(ll));
+                    // Draw territory cells (all users)
+                    if(data.cells && data.cells.length > 0) {
+                        data.cells.forEach(cell => {
+                            try {
+                                let boundsObj = Geohash.bounds(cell.cell_id);
+                                let leafletBounds = [
+                                    [boundsObj.sw.lat, boundsObj.sw.lon],
+                                    [boundsObj.ne.lat, boundsObj.ne.lon]
+                                ];
+                                L.rectangle(leafletBounds, {
+                                    color: cell.color, weight: 1.5, opacity: 0.85,
+                                    fillColor: cell.color, fillOpacity: 0.25
+                                }).bindTooltip('Owned by ' + cell.owner).addTo(map);
+                                bounds.push(leafletBounds[0]);
+                                bounds.push(leafletBounds[1]);
+                            } catch(e) {
+                                console.warn('[RunQuest] Bad cell:', cell, e);
                             }
                         });
+                    } else {
+                        console.log('[RunQuest] No cells in data. Cells array:', data.cells);
+                    }
+
+                    // Draw all run paths
+                    if(data.routes && data.routes.length > 0) {
+                        data.routes.forEach(routeObj => {
+                            try {
+                                let rg = routeObj.geojson;
+                                if(rg && rg.geometry && rg.geometry.coordinates && rg.geometry.coordinates.length > 0) {
+                                    let latLngs = rg.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                                    L.polyline(latLngs, {
+                                        color: routeObj.color, weight: 4, opacity: 1.0,
+                                        lineCap: 'round', lineJoin: 'round', className: 'glow-path'
+                                    }).bindTooltip('Run by ' + routeObj.owner).addTo(map);
+                                    latLngs.forEach(ll => bounds.push(ll));
+                                } else {
+                                    console.warn('[RunQuest] Route has no coordinates:', routeObj);
+                                }
+                            } catch(e) {
+                                console.warn('[RunQuest] Bad route:', routeObj, e);
+                            }
+                        });
+                    } else {
+                        console.log('[RunQuest] No routes in data. Routes array:', data.routes);
                     }
 
                     if (bounds.length > 0) {
@@ -125,6 +147,9 @@
                         map.setView([20, 0], 2);
                         {% endif %}
                     }
+                })
+                .catch(err => {
+                    console.error('[RunQuest] Failed to load map data:', err);
                 });
         });
     </script>

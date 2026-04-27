@@ -344,6 +344,36 @@ def user_map_data():
         'routes': routes
     }), 200
 
+@app.route('/api/debug_map')
+@login_required
+def debug_map():
+    from models import Territory, Run
+    import json
+    
+    runs = Run.query.filter_by(user_id=current_user.id).all()
+    territories = Territory.query.filter_by(user_id=current_user.id).all()
+    
+    run_info = []
+    for r in runs:
+        coords_count = 0
+        if r.route_data:
+            try:
+                parsed = json.loads(r.route_data)
+                coords = parsed.get('geometry', {}).get('coordinates', [])
+                coords_count = len(coords)
+            except:
+                coords_count = -1  # parse error
+        run_info.append({'run_id': r.id, 'distance': r.distance, 'coords_in_route': coords_count})
+    
+    return jsonify({
+        'username': current_user.username,
+        'color': current_user.color,
+        'total_runs': len(runs),
+        'total_territories': len(territories),
+        'territory_cells': [t.cell_id for t in territories],
+        'runs': run_info
+    }), 200
+
 @app.route('/api/fix_territories')
 def fix_territories():
     from models import Run, Territory, TerritoryEventLog, User
