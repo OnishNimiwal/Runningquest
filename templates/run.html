@@ -119,7 +119,7 @@
 {% block scripts %}
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <!-- Geohash JS -->
-    <script src="https://cdn.jsdelivr.net/npm/latlon-geohash@2.0.0/latlon-geohash.min.js"></script>
+    <!-- Geohash JS v1.1.0 - exposes Geohash as global -->
+    <script src="https://cdn.jsdelivr.net/npm/latlon-geohash@1.1.0/latlon-geohash.js"></script>
     <script src="{{ url_for('static', filename='js/run_tracker.js') }}"></script>
 {% endblock %}
