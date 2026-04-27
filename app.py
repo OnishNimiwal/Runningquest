@@ -249,14 +249,20 @@ def get_territories():
 @app.route('/api/user_map_data', methods=['GET'])
 @login_required
 def user_map_data():
-    from models import Territory, Run
+    from models import Territory, Run, User
     import json
 
-    # Get user territories
-    territories = Territory.query.filter_by(user_id=current_user.id).all()
-    cells = [t.cell_id for t in territories]
+    # Get all territories globally to show turf war
+    territories = db.session.query(Territory, User).join(User, Territory.user_id == User.id).all()
+    cells_data = []
+    for t, u in territories:
+        cells_data.append({
+            'cell_id': t.cell_id,
+            'color': u.color,
+            'owner': u.username
+        })
 
-    # Get user runs
+    # Get ONLY the current user's runs to draw paths
     runs = Run.query.filter_by(user_id=current_user.id).all()
     routes = []
     for r in runs:
@@ -268,7 +274,7 @@ def user_map_data():
 
     return jsonify({
         'color': current_user.color,
-        'cells': cells,
+        'cells': cells_data,
         'routes': routes
     }), 200
 
