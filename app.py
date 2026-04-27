@@ -158,7 +158,9 @@ def save_run():
     if not data:
         return jsonify({'error': 'No data provided'}), 400
     
-    from models import Run
+    from models import Run, Territory, TerritoryEventLog
+    from datetime import datetime
+    
     route_str = data.get('route_data', '{}')
     new_run = Run(
         user_id=current_user.id,
@@ -167,14 +169,37 @@ def save_run():
         route_data=route_str
     )
     db.session.add(new_run)
-    db.session.commit()
     
-    # Step 5 Logic: Calculate Grid Cells
+    # Robust fallback: Calculate and grant Grid Cells at the end of the run
     from utils.grid import route_to_cells
     cells = route_to_cells(route_str)
-    print(f"DEBUG: Run calculated {len(cells)} unique grid cells: {cells}")
     
-    return jsonify({'success': True, 'run_id': new_run.id, 'cells_calculated': cells}), 201
+    captured_count = 0
+    if not current_user.is_suspicious_run:
+        for cell_id in cells:
+            t = Territory.query.filter_by(cell_id=cell_id).first()
+            if not t:
+                t = Territory(cell_id=cell_id, user_id=current_user.id)
+                db.session.add(t)
+                event = TerritoryEventLog(cell_id=cell_id, captured_by_user_id=current_user.id)
+                db.session.add(event)
+                current_user.score += 1
+                captured_count += 1
+            elif t.user_id != current_user.id:
+                prev_owner = t.user_id
+                t.user_id = current_user.id
+                t.date_captured = datetime.utcnow()
+                event = TerritoryEventLog(cell_id=cell_id, captured_by_user_id=current_user.id, previous_owner_id=prev_owner)
+                db.session.add(event)
+                current_user.score += 1
+                captured_count += 1
+        
+        if captured_count > 0:
+            current_user.last_active = datetime.utcnow()
+
+    db.session.commit()
+    
+    return jsonify({'success': True, 'run_id': new_run.id, 'cells_calculated': cells, 'captured_count': captured_count}), 201
 
 @app.route('/api/capture_cell', methods=['POST'])
 @login_required
