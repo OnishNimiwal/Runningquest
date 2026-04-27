@@ -307,6 +307,44 @@ def user_map_data():
         'routes': routes
     }), 200
 
+@app.route('/api/fix_territories')
+def fix_territories():
+    from models import Run, Territory, TerritoryEventLog, User
+    from utils.grid import route_to_cells
+    from datetime import datetime
+    
+    runs = Run.query.all()
+    count = 0
+    for run in runs:
+        if not run.route_data: continue
+        try:
+            cells = route_to_cells(run.route_data)
+            for cell_id in cells:
+                t = Territory.query.filter_by(cell_id=cell_id).first()
+                if not t:
+                    t = Territory(cell_id=cell_id, user_id=run.user_id)
+                    db.session.add(t)
+                    event = TerritoryEventLog(cell_id=cell_id, captured_by_user_id=run.user_id)
+                    db.session.add(event)
+                    user = User.query.get(run.user_id)
+                    if user:
+                        user.score += 1
+                    count += 1
+                elif t.user_id != run.user_id:
+                    prev_owner = t.user_id
+                    t.user_id = run.user_id
+                    t.date_captured = datetime.utcnow()
+                    event = TerritoryEventLog(cell_id=cell_id, captured_by_user_id=run.user_id, previous_owner_id=prev_owner)
+                    db.session.add(event)
+                    user = User.query.get(run.user_id)
+                    if user:
+                        user.score += 1
+                    count += 1
+        except Exception as e:
+            pass
+    db.session.commit()
+    return f"Successfully processed existing runs and retroactively granted {count} territories to the database!"
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
