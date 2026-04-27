@@ -55,6 +55,8 @@ def dashboard():
     # Step 8: Check and process territory decay
     process_user_decay(current_user)
 
+    # Count of territories this user currently owns (for warning state)
+    user_territories = Territory.query.filter_by(user_id=current_user.id).count()
 
     # Calculate Total Distance
     total_dist_query = db.session.query(func.sum(Run.distance)).filter_by(user_id=current_user.id).scalar()
