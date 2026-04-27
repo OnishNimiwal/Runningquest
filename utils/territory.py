@@ -5,7 +5,7 @@ from shapely.ops import unary_union
 BUFFER_DEGREES = 0.0004  # roughly 40-45 meters depending on latitude
 
 def create_polygon_from_route(route_geojson_str):
-    \"\"\"Converts a GeoJSON LineString route into a buffered Polygon.\"\"\"
+    """Converts a GeoJSON LineString route into a buffered Polygon."""
     if not route_geojson_str:
         return None
         
@@ -24,7 +24,7 @@ def create_polygon_from_route(route_geojson_str):
         return None
 
 def merge_territories(poly1, poly2):
-    \"\"\"Unions two polygons.\"\"\"
+    """Unions two polygons."""
     if not poly1: return poly2
     if not poly2: return poly1
     try:
@@ -35,7 +35,7 @@ def merge_territories(poly1, poly2):
         return poly1
 
 def subtract_territory(base_poly, subtract_poly):
-    \"\"\"Subtracts subtract_poly from base_poly.\"\"\"
+    """Subtracts subtract_poly from base_poly."""
     if not base_poly or not subtract_poly:
         return base_poly
     try:
@@ -46,7 +46,7 @@ def subtract_territory(base_poly, subtract_poly):
         return base_poly
 
 def geojson_to_shapely(geojson_str):
-    \"\"\"Parses a GeoJSON string into a Shapely geometry.\"\"\"
+    """Parses a GeoJSON string into a Shapely geometry."""
     if not geojson_str:
         return None
     try:
@@ -59,7 +59,7 @@ def geojson_to_shapely(geojson_str):
         return None
 
 def shapely_to_geojson(geom):
-    \"\"\"Converts a Shapely geometry back to a GeoJSON string.\"\"\"
+    """Converts a Shapely geometry back to a GeoJSON string."""
     if not geom or geom.is_empty:
         return None
     try:
@@ -76,7 +76,7 @@ def shapely_to_geojson(geom):
         return None
 
 def calculate_area(geom):
-    \"\"\"Rough estimate of area in square degrees. Good enough for ranking.\"\"\"
+    """Rough estimate of area in square degrees. Good enough for ranking."""
     if not geom or geom.is_empty:
         return 0.0
     return geom.area
