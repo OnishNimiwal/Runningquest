@@ -30,7 +30,7 @@ def validate_movement(user, current_lat, current_lng):
 
     if time_diff_hours > 0:
         speed_kmh = distance_km / time_diff_hours
-        if speed_kmh > 25.0:
+        if speed_kmh > 200.0: # Increased to 200km/h temporarily for testing GPS glitches
             print(f"ANTI-CHEAT TRIGGERED: User {user.username} moved at {speed_kmh:.2f} km/h!")
             return False
 
