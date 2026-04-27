@@ -55,8 +55,6 @@ def dashboard():
     # Step 8: Check and process territory decay
     process_user_decay(current_user)
 
-    # Get user's territories count
-    user_territories = Territory.query.filter_by(user_id=current_user.id).count()
 
     # Calculate Total Distance
     total_dist_query = db.session.query(func.sum(Run.distance)).filter_by(user_id=current_user.id).scalar()
@@ -94,25 +92,20 @@ def dashboard():
     else:
         warning_state = 'danger'        # streak broken, decay active
 
-    # Calculate leaderboard for last 24h
-    last_24h = datetime.utcnow() - timedelta(days=1)
-    
+    # Leaderboard: rank all users by total territory cells currently owned
     leaderboard_query = db.session.query(
         User.username,
         User.color,
-        func.count(TerritoryEventLog.id).label('captures')
+        func.count(Territory.id).label('area')
     ).join(
-        TerritoryEventLog, User.id == TerritoryEventLog.captured_by_user_id
-    ).filter(
-        TerritoryEventLog.timestamp >= last_24h
+        Territory, User.id == Territory.user_id
     ).group_by(
         User.id
     ).order_by(
-        func.count(TerritoryEventLog.id).desc()
+        func.count(Territory.id).desc()
     ).limit(10).all()
 
-    return render_template('dashboard.html', title='Dashboard', 
-                           user_territories=user_territories, 
+    return render_template('dashboard.html', title='Dashboard',
                            leaderboard=leaderboard_query,
                            warning_state=warning_state,
                            total_distance=total_distance,

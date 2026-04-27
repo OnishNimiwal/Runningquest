@@ -28,10 +28,6 @@
             <div class="stat-value">{{ "%.1f"|format(total_distance) }} <span>km</span></div>
         </div>
         <div class="stat-card">
-            <h3>Territories Owned</h3>
-            <div class="stat-value">{{ user_territories }}</div>
-        </div>
-        <div class="stat-card">
             <h3>Current Streak</h3>
             <div class="stat-value">{{ current_streak }} <span>Days</span></div>
         </div>
@@ -54,7 +50,7 @@
 
     <!-- Leaderboard -->
     <div class="leaderboard-section">
-        <h2 style="margin-bottom: 1.5rem;">Live 24h Leaderboard</h2>
+        <h2 style="margin-bottom: 1.5rem;">🏆 Territory Leaderboard</h2>
         <div class="leaderboard-list">
             {% for entry in leaderboard %}
             {% set rank_class = "" %}
@@ -65,10 +61,10 @@
             <div class="leaderboard-item {{ rank_class }}">
                 <span class="rank">#{{ loop.index }}</span>
                 <span class="name" style="color: {{ entry.color }}">{{ entry.username }}</span>
-                <span class="score">{{ entry.captures }} Captures</span>
+                <span class="score">{{ entry.area }} cells</span>
             </div>
             {% else %}
-            <p style="text-align:center; color: var(--text-muted); padding: 2rem;">No captures in the last 24 hours yet.</p>
+            <p style="text-align:center; color: var(--text-muted); padding: 2rem;">No territories captured yet. Go run!</p>
             {% endfor %}
         </div>
     </div>
