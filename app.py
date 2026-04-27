@@ -262,13 +262,17 @@ def user_map_data():
             'owner': u.username
         })
 
-    # Get ONLY the current user's runs to draw paths
-    runs = Run.query.filter_by(user_id=current_user.id).all()
+    # Get ALL runs from all users to draw intersecting public paths
+    runs_data = db.session.query(Run, User).join(User, Run.user_id == User.id).all()
     routes = []
-    for r in runs:
+    for r, u in runs_data:
         if r.route_data:
             try:
-                routes.append(json.loads(r.route_data))
+                routes.append({
+                    'geojson': json.loads(r.route_data),
+                    'color': u.color,
+                    'owner': u.username
+                })
             except:
                 pass
 

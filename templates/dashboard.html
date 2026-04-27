@@ -110,12 +110,13 @@
                     }
 
                     if(data.routes) {
-                        data.routes.forEach(routeGeoJSON => {
+                        data.routes.forEach(routeObj => {
+                            let routeGeoJSON = routeObj.geojson;
                             if(routeGeoJSON && routeGeoJSON.geometry && routeGeoJSON.geometry.coordinates) {
                                 let latLngs = routeGeoJSON.geometry.coordinates.map(coord => [coord[1], coord[0]]);
                                 L.polyline(latLngs, {
-                                    color: data.color, weight: 4, opacity: 1.0, lineCap: 'round', lineJoin: 'round', className: 'glow-path'
-                                }).addTo(map);
+                                    color: routeObj.color, weight: 4, opacity: 1.0, lineCap: 'round', lineJoin: 'round', className: 'glow-path'
+                                }).bindTooltip('Run by ' + routeObj.owner).addTo(map);
                                 latLngs.forEach(ll => bounds.push(ll));
                             }
                         });
