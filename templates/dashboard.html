@@ -5,17 +5,15 @@
 {% endblock %}
 {% block content %}
 <div class="dashboard-wrapper">
-    <!-- Inactivity Decay Banners -->
-    {% if user_territories > 0 %}
-        {% if days_inactive > 3 %}
-        <div class="alert alert-error">
-            CRITICAL: You are actively losing territory due to inactivity! Start a run to stop the decay.
-        </div>
-        {% elif days_inactive > 0 %}
-        <div class="alert" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b;">
-            WARNING: Your territories will begin decaying in {{ (3 - days_inactive)|round(1) }} days! Stay active.
-        </div>
-        {% endif %}
+    <!-- Streak-Synchronized Decay Banners -->
+    {% if warning_state == 'danger' %}
+    <div class="alert alert-error">
+        🔥 STREAK BROKEN! Your territories are actively decaying — go for a run NOW to stop the loss!
+    </div>
+    {% elif warning_state == 'warning' %}
+    <div class="alert" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.6);">
+        ⚠️ You haven't run today yet! Run before midnight to keep your streak and protect your territories.
+    </div>
     {% endif %}
 
     <div style="margin-bottom: 2rem;">

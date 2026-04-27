@@ -55,10 +55,6 @@ def dashboard():
     # Step 8: Check and process territory decay
     process_user_decay(current_user)
 
-    days_inactive = 0
-    if current_user.last_active:
-        days_inactive = (datetime.utcnow() - current_user.last_active).total_seconds() / 86400.0
-
     # Get user's territories count
     user_territories = Territory.query.filter_by(user_id=current_user.id).count()
 
@@ -66,19 +62,37 @@ def dashboard():
     total_dist_query = db.session.query(func.sum(Run.distance)).filter_by(user_id=current_user.id).scalar()
     total_distance = total_dist_query if total_dist_query else 0.0
 
-    # Calculate Current Streak
+    # Calculate Current Streak + streak-aware warning state
     runs = Run.query.filter_by(user_id=current_user.id).order_by(Run.date.desc()).all()
     current_streak = 0
+    run_dates = set(r.date.date() for r in runs)
+    today = datetime.utcnow().date()
+    yesterday = today - timedelta(days=1)
+
     if runs:
-        current_date = datetime.utcnow().date()
         last_run_date = runs[0].date.date()
-        if (current_date - last_run_date).days <= 1:
+        days_since_last_run = (today - last_run_date).days
+        if days_since_last_run <= 1:
             current_streak = 1
             check_date = last_run_date - timedelta(days=1)
-            run_dates = set(r.date.date() for r in runs)
             while check_date in run_dates:
                 current_streak += 1
                 check_date -= timedelta(days=1)
+    else:
+        days_since_last_run = 999
+
+    # Warning state logic — synced with streak and decay:
+    # 'safe'    → ran today, no warning
+    # 'warning' → last run was yesterday (streak alive but today not run yet)
+    # 'danger'  → streak broken (2+ days ago), decay is starting / active
+    if user_territories == 0:
+        warning_state = 'none'          # new user, no territories to lose
+    elif today in run_dates:
+        warning_state = 'safe'          # already ran today
+    elif yesterday in run_dates:
+        warning_state = 'warning'       # haven't run today — streak at risk
+    else:
+        warning_state = 'danger'        # streak broken, decay active
 
     # Calculate leaderboard for last 24h
     last_24h = datetime.utcnow() - timedelta(days=1)
@@ -100,7 +114,7 @@ def dashboard():
     return render_template('dashboard.html', title='Dashboard', 
                            user_territories=user_territories, 
                            leaderboard=leaderboard_query,
-                           days_inactive=days_inactive,
+                           warning_state=warning_state,
                            total_distance=total_distance,
                            current_streak=current_streak)
 
