@@ -102,7 +102,7 @@
                                 [boundsObj.ne.lat, boundsObj.ne.lon]
                             ];
                             L.rectangle(leafletBounds, {
-                                color: cell.color, weight: 0, fillOpacity: 0.25, opacity: 0
+                                fillColor: cell.color, stroke: false, fillOpacity: 0.4
                             }).bindTooltip('Owned by ' + cell.owner).addTo(map);
                             bounds.push(leafletBounds[0]);
                             bounds.push(leafletBounds[1]);
