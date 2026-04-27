@@ -58,6 +58,34 @@ def dashboard():
     # Count of territories this user currently owns (for warning state)
     user_territories = Territory.query.filter_by(user_id=current_user.id).count()
 
+    # Auto-seed: if user has runs but 0 territories, retroactively capture them
+    if user_territories == 0:
+        from utils.grid import route_to_cells
+        from models import TerritoryEventLog
+        all_runs = Run.query.filter_by(user_id=current_user.id).all()
+        if all_runs:
+            seeded = 0
+            for run in all_runs:
+                if not run.route_data:
+                    continue
+                try:
+                    cells = route_to_cells(run.route_data)
+                    for cell_id in cells:
+                        t = Territory.query.filter_by(cell_id=cell_id).first()
+                        if not t:
+                            t = Territory(cell_id=cell_id, user_id=current_user.id)
+                            db.session.add(t)
+                            event = TerritoryEventLog(cell_id=cell_id, captured_by_user_id=current_user.id)
+                            db.session.add(event)
+                            current_user.score += 1
+                            seeded += 1
+                except Exception:
+                    pass
+            if seeded > 0:
+                current_user.last_active = datetime.utcnow()
+                db.session.commit()
+            user_territories = Territory.query.filter_by(user_id=current_user.id).count()
+
     # Calculate Total Distance
     total_dist_query = db.session.query(func.sum(Run.distance)).filter_by(user_id=current_user.id).scalar()
     total_distance = total_dist_query if total_dist_query else 0.0
