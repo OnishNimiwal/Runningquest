@@ -290,8 +290,23 @@ def fix_territories():
     from models import Run, Territory, User
     from utils.territory import create_polygon_from_route, merge_territories, subtract_territory, geojson_to_shapely, shapely_to_geojson, calculate_area
     from datetime import datetime
+    from sqlalchemy import text
     
-    # 1. Clear all existing territories
+    # 0. Drop old tables and recreate the new schema!
+    # Because Vercel Postgres does not auto-migrate existing tables, we must manually drop the old grid schema
+    try:
+        db.session.execute(text("DROP TABLE IF EXISTS territory_event_log CASCADE;"))
+        db.session.execute(text("DROP TABLE IF EXISTS territory_decay_log CASCADE;"))
+        db.session.execute(text("DROP TABLE IF EXISTS territory CASCADE;"))
+        db.session.commit()
+    except Exception as e:
+        print("Drop error (safe to ignore if missing):", e)
+        db.session.rollback()
+
+    # Recreate the tables using the fresh models.py definitions
+    db.create_all()
+    
+    # 1. Clear all existing territories (just in case)
     db.session.query(Territory).delete()
     db.session.commit()
     
