@@ -1,89 +1,19 @@
-{% extends 'base.html' %}
-{% block head %}
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-{% endblock %}
-{% block content %}
-<div class="dashboard-wrapper">
-    <!-- Streak-Synchronized Decay Banners -->
-    {% if warning_state == 'danger' %}
-    <div class="alert alert-error">
-        🔥 STREAK BROKEN! Your territories are actively decaying — go for a run NOW to stop the loss!
-    </div>
-    {% elif warning_state == 'warning' %}
-    <div class="alert" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.6);">
-        ⚠️ You haven't run today yet! Run before midnight to keep your streak and protect your territories.
-    </div>
-    {% endif %}
+import os
 
-    <div style="margin-bottom: 2rem;">
-        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Ready to conquer, {{ current_user.username }}?</h1>
-        <p style="color: var(--text-muted); font-size: 1.1rem;">Your city awaits. Lace up and start capturing territories.</p>
-    </div>
+html_path = 'templates/dashboard.html'
+with open(html_path, 'r', encoding='utf-8') as f:
+    content = f.read()
 
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <h3>Total Distance</h3>
-            <div class="stat-value">{{ "%.1f"|format(total_distance) }} <span>km</span></div>
-        </div>
-        <div class="stat-card">
-            <h3>Current Streak</h3>
-            <div class="stat-value">{{ current_streak }} <span>Days</span></div>
-        </div>
-    </div>
+start_marker = "fetch('/api/user_map_data')"
+end_marker = "});\n        });"
 
-    <!-- Territory Map -->
-    <div class="map-section">
-        <h2 style="margin-bottom: 1rem;">🗺️ City Territory Map</h2>
-        <div id="dashboard-map"></div>
-        <p style="text-align:center; color: var(--text-muted); margin-top:1rem; font-size: 0.9rem;">All captured territories shown in each player's color. Hover to see the owner.</p>
-    </div>
+start_idx = content.find(start_marker)
+end_idx = content.find(end_marker, start_idx) + len(end_marker)
 
-    <!-- Main Action -->
-    <div style="text-align: center; margin: 3rem 0;">
-        <a href="{{ url_for('run_tracker') }}" class="btn btn-primary pulse-glow" style="padding: 1.5rem 4rem; font-size: 1.5rem; border-radius: 50px;">
-            START RUN
-            <div style="font-size: 0.9rem; font-weight: 400; opacity: 0.8; margin-top: 0.5rem;">Capture Territory</div>
-        </a>
-    </div>
-
-    <!-- Leaderboard -->
-    <div class="leaderboard-section">
-        <h2 style="margin-bottom: 1.5rem;">🏆 Territory Leaderboard</h2>
-        <div class="leaderboard-list">
-            {% for entry in leaderboard %}
-            {% set rank_class = "" %}
-            {% if loop.index == 1 %}{% set rank_class = "top-1" %}
-            {% elif loop.index == 2 %}{% set rank_class = "top-2" %}
-            {% elif loop.index == 3 %}{% set rank_class = "top-3" %}
-            {% endif %}
-            <div class="leaderboard-item {{ rank_class }}">
-                <span class="rank">#{{ loop.index }}</span>
-                <span class="name" style="color: {{ entry.color }}">{{ entry.username }}</span>
-                <span class="score">{{ entry.area }} cells</span>
-            </div>
-            {% else %}
-            <p style="text-align:center; color: var(--text-muted); padding: 2rem;">No territories captured yet. Go run!</p>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-</div>
-{% endblock %}
-{% block scripts %}
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <!-- Turf.js - open source spatial analysis for smooth territory polygons -->
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var map = L.map('dashboard-map').setView([0, 0], 2);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; CARTO'
-            }).addTo(map);
-
-            fetch('/api/user_map_data')
+if start_idx == -1 or end_idx == -1:
+    print("Markers not found!")
+else:
+    new_fetch_block = """fetch('/api/user_map_data')
                 .then(r => {
                     if (!r.ok) throw new Error('API error: ' + r.status);
                     return r.json();
@@ -166,6 +96,9 @@
                 .catch(err => {
                     console.error('[RunQuest] Failed to load map data:', err);
                 });
-        });
-    </script>
-{% endblock %}
+        });"""
+
+    new_content = content[:start_idx] + new_fetch_block + content[end_idx:]
+    with open(html_path, 'w', encoding='utf-8') as f:
+        f.write(new_content)
+    print("Successfully replaced fetch block with INTVL-style Turf.js logic.")
