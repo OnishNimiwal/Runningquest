@@ -61,7 +61,7 @@
             <div class="leaderboard-item {{ rank_class }}">
                 <span class="rank">#{{ loop.index }}</span>
                 <span class="name" style="color: {{ entry.color }}">{{ entry.username }}</span>
-                <span class="score">{{ entry.area }} cells</span>
+                <span class="score">{{ "%.3f"|format(entry.area) }} sq km</span>
             </div>
             {% else %}
             <p style="text-align:center; color: var(--text-muted); padding: 2rem;">No territories captured yet. Go run!</p>
@@ -69,12 +69,10 @@
         </div>
     </div>
 </div>
-</div>
 {% endblock %}
 {% block scripts %}
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <!-- Turf.js - open source spatial analysis for smooth territory polygons -->
     
     <script>
         document.addEventListener("DOMContentLoaded", function() {
