@@ -90,8 +90,6 @@ function startRun() {
         // GeoJSON uses [lng, lat]
         routeCoordinates.push([lng, lat]);
 
-        }
-
     }, (error) => {
         console.warn('ERROR(' + error.code + '): ' + error.message);
     }, {
